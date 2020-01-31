@@ -4,10 +4,14 @@ Created on 15 Nov 2010
 @author: hannes
 """
 
+import sys
+print(sys.path)
+
 import os
 import unittest
 import pymqi
 from pymqi import CMQC
+
 
 
 class TestRFH2(unittest.TestCase):
@@ -219,7 +223,7 @@ class TestRFH2(unittest.TestCase):
 
         rfh2 = pymqi.RFH2()
         try:
-            rfh2.unpack(self.single_rfh2_message[0:32])
+            rfh2.unpack(self.single_rfh2_message[0:36])
         except pymqi.PYIFError as e:
             self.assertEqual(str(e),
                              "PYMQI Error: RFH2 - Buffer too short. Should be 36 bytes or longer.  Buffer Length: 32",

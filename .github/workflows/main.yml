@@ -1,0 +1,47 @@
+name: unit-tests
+on: [push]
+
+jobs:
+  pymqi_test_job:
+    strategy:
+      max-parallel: 3
+      matrix:
+        environment: ['ubuntu-latest']
+        # windows-latest: runner does allow to run ibmcom/mq linux container
+        # macos-latest: runner does not have docker
+        # macos-latest: has some issues in SeyfSV/setup-mqclient@master action
+        #environment: ['ubuntu-latest', 'macos-latest', 'windows-latest']
+        python-version: [2.7, 3.7, 3.8]
+        mq-client-version: [9.1.4.0]
+
+    services:
+      mq:
+        image: ibmcom/mq
+        env:
+          LICENSE: accept
+          MQ_QMGR_NAME: MQTEST
+        ports:
+          - 8886:1414
+        options: --name mq
+
+    runs-on: ${{ matrix.environment}}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install MQ Client
+        uses: SeyfSV/setup-mqclient@v0.1
+        with:
+          mq-client-version: ${{ matrix.mq-client-version }}
+
+      - name: Setup python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install pymqi dependencies
+        run: |
+          pip install tox
+      
+      - name: Test pymqi with tox
+        run: |
+          tox -e docker

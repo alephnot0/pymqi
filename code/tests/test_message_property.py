@@ -3,7 +3,6 @@
 import unittest
 
 import config
-import env
 import utils
 
 import pymqi

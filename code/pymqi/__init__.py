@@ -1353,12 +1353,12 @@ class QueueManager(object):
     connectWithOptions = connect_with_options
 
     def connect_tcp_client(self, name, cd, channel, conn_name, user, password):
+        # type: (str, CD, str, str, str, str)
         """ Connect immediately to the remote Queue Manager 'name', using
         a TCP Client connection, with channnel 'channel' and the
         TCP connection string 'conn_name'. All other connection
         optons come from 'cd'.
         """
-        # type: (str, CD, str, str, str, str)
 
         cd.ChannelName = ensure_bytes(channel)
         cd.ConnectionName = ensure_bytes(conn_name)
