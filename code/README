@@ -1,7 +1,6 @@
 
-<p align="center">
-  <a href="https://github.com/actions/toolkit"><img alt="GitHub Actions status" src="https://github.com/dsuch/pymqi/workflows/unit-tests/badge.svg"></a>
-</p>
+![unit-tests](https://github.com/dsuch/pymqi/workflows/unit-tests/badge.svg)
+![install-tests](https://github.com/dsuch/pymqi/workflows/install-tests/badge.svg)
 
 PyMQI - Python interface to IBM MQ (WebSphere MQ, MQSeries)
 ----------------------------------------------------------
