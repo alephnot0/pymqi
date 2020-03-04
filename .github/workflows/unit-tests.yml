@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - master
+      - gh159-actions-unit-testing
   pull_request:
 
 jobs:
@@ -26,10 +27,24 @@ jobs:
           MQ_QMGR_NAME: MQTEST
         ports:
           - 8886:1414
-        options: --name mq
+        # volumes:
+        #   - ${{ github.workspace }}/pki:/etc/mqm/pki
+        #   - ${{ github.workspace }}/mqm:/mnt/mqm
+        options: --name mq -v /etc/mqm/pki:/etc/mqm/pki -v /var/mqm:/mnt/mqm
 
     runs-on: ${{ matrix.environment}}
     steps:
+      - name: Create folder for mqm
+        run: |
+          sudo mkdir -p /var/mqm /etc/mqm/pki
+          sudo chown 888:888 /var/mqm 
+          sudo chown `id -u`:888 /etc/mqm/pki
+
+      - name: Restart MQ Server
+        uses: docker://docker
+        with:
+          args: docker restart mq
+      
       - name: Checkout source
         uses: actions/checkout@v2
 
@@ -40,7 +55,8 @@ jobs:
           key: mqclient-${{ runner.os }}-${{ matrix.mq-client-version }}
 
       - name: Install MQ Client
-        uses: SeyfSV/setup-mqclient@v0.1.1
+        id: setup-mqclient
+        uses: SeyfSV/setup-mqclient@master  #v0.1.2
         with:
           mq-client-version: ${{ matrix.mq-client-version }}
 
@@ -53,6 +69,53 @@ jobs:
         run: |
           pip install tox
       
+      - name: Prepare to TLS test
+        if: steps.cache-keydb.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p /etc/mqm/pki/keys
+          runmqakm -keydb -create -db /etc/mqm/pki/keys/mqtest.kdb -pw Secret13 -stash
+          runmqakm -cert -create -db /etc/mqm/pki/keys/mqtest.kdb -type kdb -pw Secret13 \
+          -label mqtest -dn CN=mqtest -size 2048 -x509version 3 -expire 365 -fips -sig_alg SHA256WithRSA
+          runmqakm -keydb -create -db /etc/mqm/pki/keys/client.kdb -pw Secret13 -stash
+          runmqakm -cert -create -db /etc/mqm/pki/keys/client.kdb -type kdb -pw Secret13 \
+          -label client -dn CN=client -size 2048 -x509version 3 -expire 365 -fips -sig_alg SHA256WithRSA
+          runmqakm -cert -extract -db /etc/mqm/pki/keys/mqtest.kdb -pw Secret13 \
+          -label mqtest -target /etc/mqm/pki/keys/mqtest.pem
+          runmqakm -cert -add -db /etc/mqm/pki/keys/client.kdb -pw Secret13 \
+          -label mqtest -file /etc/mqm/pki/keys/mqtest.pem
+          runmqakm -cert -extract -db /etc/mqm/pki/keys/client.kdb -pw Secret13 \
+          -label client -target /etc/mqm/pki/keys/client.pem
+          runmqakm -cert -add -db /etc/mqm/pki/keys/mqtest.kdb -pw Secret13 \
+          -label client -file /etc/mqm/pki/keys/client.pem
+          sudo chown -R `id -u`:888 /etc/mqm/pki
+          sudo chmod -R g+r /etc/mqm/pki/keys
+      
       - name: Test pymqi with tox
+        id: test-tox
+        env:
+          PYMQI_TEST_TLS_SKIP: 0
+          PYMQI_TEST_TLS_KEY_REPO_LOCATION_QMGR: /etc/mqm/pki/keys
+          PYMQI_TEST_TLS_KEY_REPO_LOCATION_CLIENT: /etc/mqm/pki/keys
         run: |
           tox -e docker
+
+      - name: Change MQ folder permission
+        if: failure()
+        run: |
+          sudo chmod o+x /var/mqm/data/qmgrs/MQTEST/errors
+          sudo chmod -R o+r /var/mqm/data/qmgrs/MQTEST/errors
+
+      - name: Upload MQ Server logs
+        if: failure()
+        uses: actions/upload-artifact@v1
+        with:
+          name: mq-server-logs
+          path: /var/mqm/data/qmgrs/MQTEST/errors
+
+      - name: Upload MQ Client logs
+        if: failure()
+        uses: actions/upload-artifact@v1
+        with:
+          name: mq-client-logs
+          path: ${{ steps.setup-mqclient.outputs.mq-file-path }}/errors
+

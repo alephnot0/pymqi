@@ -976,13 +976,11 @@ class SCO(MQOpts):
                      ['FipsRequired', py23long(0), MQLONG_TYPE]]
 
         if '7.0' in pymqe.__mqlevels__:
-            opts += [['EncryptionPolicySuiteB', [0, 0, 0, 0], '4' + MQLONG_TYPE]]
+            opts += [['EncryptionPolicySuiteB', [1, 0, 0, 0], '4' + MQLONG_TYPE]]
 
         if '7.1' in pymqe.__mqlevels__:
             opts += [['CertificateValPolicy', py23long(0), MQLONG_TYPE]]
 
-            if MQLONG_TYPE == 'i':
-                opts += [['pad', b'', '4s']]
 
         if '8.0.0' in pymqe.__mqlevels__:
             opts += [['CertificateLabel', b'', '64s']]
