@@ -27,7 +27,11 @@ class Tests(unittest.TestCase):
         self.conn_info = "{0}({1})".format(self.host, self.port)
 
         self.qmgr = pymqi.QueueManager(None)
-        self.qmgr.connectTCPClient(self.queue_manager, pymqi.CD(), self.channel, self.conn_info, self.user, self.password)
+        try:
+            self.qmgr.connectTCPClient(self.queue_manager, pymqi.CD(), self.channel, self.conn_info, self.user, self.password)
+        except pymqi.MQMIError as ex:
+            if ex.comp == 2:
+                raise ex
 
     def tearDown(self):
         """Clear test environment."""
