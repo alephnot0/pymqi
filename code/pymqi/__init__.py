@@ -327,7 +327,7 @@ class MQOpts(object):
             if isinstance(i[1], list):
                 l = []
                 for j in range(i[3]):
-                    l.append(r[x]) 
+                    l.append(r[x])
                     x = x + 1
                 setattr(self, i[0], l)
             else:
@@ -455,11 +455,11 @@ class MQOpts(object):
             c_vs_value = ctypes.cast(c_vs_value_p, ctypes.c_char_p).value
 
         return c_vs_value
-    
+
     def __getattr__(self, name):
         # types: (str) -> Any
         return self.__dict__[name]
-    
+
     def __setattr__(self, name, value):
         # types: (str, Any)
         self.__dict__[name] = value
@@ -1266,7 +1266,7 @@ class CFIL(MQOpts):
                 ['StrucLength', CMQCFC.MQCFIL_STRUC_LENGTH_FIXED + 4 * count, MQLONG_TYPE], # Check python 2
                 ['Parameter', 0, MQLONG_TYPE],
                 ['Count', count, MQLONG_TYPE],
-                ['Values', values, MQLONG_TYPE, (count if count else 1)], 
+                ['Values', values, MQLONG_TYPE, (count if count else 1)],
                ]
         super(CFIL, self).__init__(tuple(opts), **kw)
 
@@ -1343,7 +1343,7 @@ class CFST(MQOpts):
         # types: (Dict[str, Any])
         string = kw.pop('String', '')
         string_length = kw.pop('StringLength', len(string))
-        padded_string_length = padded_count(string_length) 
+        padded_string_length = padded_count(string_length)
 
         opts = [['Type', CMQCFC.MQCFT_STRING, MQLONG_TYPE],
                 ['StrucLength', CMQCFC.MQCFST_STRUC_LENGTH_FIXED + padded_string_length, MQLONG_TYPE],
@@ -1408,7 +1408,7 @@ class MQMIError(Error):
     """ Exception class for MQI low level errors.
     """
     errStringDicts = (_MQConst2String(CMQC, 'MQRC_'), _MQConst2String(CMQCFC, 'MQRCCF_'),)
-    comp = 0 
+    comp = 0
     reason = 0
 
     def __init__(self, comp, reason, **kw):
@@ -2618,7 +2618,7 @@ class _Method:
                     elif isinstance(value, int):
                         parameter = CFIN(Parameter=key,
                                         Value=value)
-                    elif (isinstance(value, list) 
+                    elif (isinstance(value, list)
                         and isinstance(value[0], int)):
                         parameter = CFIL(Parameter=key,
                                         Values=value)
@@ -2627,7 +2627,7 @@ class _Method:
             elif isinstance(args_dict, list):
                 for parameter in args_dict:
                     message = message + parameter.pack()
-        
+
         if filters:
             for pcf_filter in filters:
                 if isinstance(pcf_filter, _Filter):
@@ -2650,12 +2650,13 @@ class _Method:
                     MsgType=CMQC.MQMT_REQUEST,
                     ReplyToQ=self.__pcf._reply_queue_name,
                     Feedback=CMQC.MQFB_NONE,
-                    Expiry=300)
+                    Expiry=300,
+                    Report=CMQC.MQRO_PASS_DISCARD_AND_EXPIRY | CMQC.MQRO_DISCARD_MSG)
         put_opts = PMO(Options=CMQC.MQPMO_NO_SYNCPOINT)
 
         command_queue.put(message, put_md, put_opts)
         command_queue.close()
-        
+
         get_opts = GMO(
                     Options=CMQC.MQGMO_NO_SYNCPOINT + CMQC.MQGMO_FAIL_IF_QUIESCING +
                             CMQC.MQGMO_WAIT,
@@ -2663,7 +2664,7 @@ class _Method:
                     MatchOptions=CMQC.MQMO_MATCH_CORREL_ID,
                     WaitInterval=300)
         get_md = MD(CorrelId=put_md.MsgId)
-        
+
         ress = []
         try:
             while True:
@@ -2675,7 +2676,7 @@ class _Method:
         except MQMIError as ex:
             if not(ex.reason == CMQC.MQRC_NO_MSG_AVAILABLE and len(ress)):
                 raise ex
-        
+
         return ress
 
 #
@@ -2776,7 +2777,7 @@ class PCFExecute(QueueManager):
     stringifyKeys = stringify_keys
 
     def disconnect(self):
-        """ Disconnect from reply_queue 
+        """ Disconnect from reply_queue
         """
         try:
             if self._reply_queue and self._reply_queue.get_handle():
@@ -2786,7 +2787,7 @@ class PCFExecute(QueueManager):
         finally:
             self._reply_queue = None
             self._reply_queue_name = None
-    
+
     @staticmethod
     def unpack(message): # type: (bytes) -> dict
         """Unpack PCF message to dictionary
@@ -2808,14 +2809,14 @@ class PCFExecute(QueueManager):
         parameter = None # type: Optional[MQOpts]
         while(index > 0):
             if message[cursor] == CMQCFC.MQCFT_STRING:
-                parameter = CFST() 
+                parameter = CFST()
                 parameter.unpack(message[cursor:cursor + CMQCFC.MQCFST_STRUC_LENGTH_FIXED])
                 if parameter.StringLength > 1:
                     parameter = CFST(StringLength=parameter.StringLength)
                     parameter.unpack(message[cursor:cursor + parameter.StrucLength])
                 value = parameter.String
             elif message[cursor] == CMQCFC.MQCFT_STRING_LIST:
-                parameter = CFSL() 
+                parameter = CFSL()
                 parameter.unpack(message[cursor:cursor + CMQCFC.MQCFSL_STRUC_LENGTH_FIXED])
                 if parameter.StringLength > 1:
                     parameter = CFSL(StringLength=parameter.StringLength,
@@ -2827,14 +2828,14 @@ class PCFExecute(QueueManager):
                 parameter.unpack(message[cursor:cursor + CMQCFC.MQCFIN_STRUC_LENGTH])
                 value = parameter.Value
             elif message[cursor] == CMQCFC.MQCFT_INTEGER_LIST:
-                parameter = CFIL() 
+                parameter = CFIL()
                 parameter.unpack(message[cursor:cursor + CMQCFC.MQCFIL_STRUC_LENGTH_FIXED])
                 if parameter.Count > 1:
                     parameter = CFIL(Count=parameter.Count)
                     parameter.unpack(message[cursor:cursor + parameter.StrucLength])
                 value = parameter.Values
             elif message[cursor] == CMQCFC.MQCFT_BYTE_STRING:
-                parameter = CFBS() 
+                parameter = CFBS()
                 parameter.unpack(message[cursor:cursor + CMQCFC.MQCFBS_STRUC_LENGTH_FIXED])
                 if parameter.StringLength > 1:
                     parameter = CFBS(StringLength=parameter.StringLength)
